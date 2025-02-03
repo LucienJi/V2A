@@ -16,72 +16,21 @@ import robomimic.utils.tensor_utils as TensorUtils
 import robomimic.utils.log_utils as LogUtils
 import robomimic.utils.file_utils as FileUtils
 
-from dataset import PlaydataSequenceDataset
+from .dataset import EncoderSequenceDataset
 
-def load_data_for_training(config, obs_keys):
+
+def load_data_for_encoder_training(config, obs_keys):
     """
-    Data loading at the start of an algorithm.
-
-    Args:
-        config (BaseConfig instance): config object
-        obs_keys (list): list of observation modalities that are required for
-            training (this will inform the dataloader on what modalities to load)
-
-    Returns:
-        train_dataset (PlaydataSequenceDataset instance): train dataset object
-        valid_dataset (PlaydataSequenceDataset instance): valid dataset object (only if using validation)
+    Data loading at training time for the encoder.
+    No need to set training and validation split here, since encoder is trained on the entire dataset.
     """
 
     # config can contain an attribute to filter on
-    train_filter_by_attribute = config.train.hdf5_filter_key
-    valid_filter_by_attribute = config.train.hdf5_validation_filter_key
-    if valid_filter_by_attribute is not None:
-        assert config.experiment.validate, "specified validation filter key {}, but config.experiment.validate is not set".format(valid_filter_by_attribute)
+    dataset = encoder_dataset_factory(config, obs_keys)
+    return dataset
 
-    # load the dataset into memory
-    if config.experiment.validate:
-        assert not config.train.hdf5_normalize_obs, "no support for observation normalization with validation data yet"
-        assert (train_filter_by_attribute is not None) and (valid_filter_by_attribute is not None), \
-            "did not specify filter keys corresponding to train and valid split in dataset" \
-            " - please fill config.train.hdf5_filter_key and config.train.hdf5_validation_filter_key"
-        train_demo_keys = FileUtils.get_demos_for_filter_key(
-            hdf5_path=os.path.expanduser(config.train.data),
-            filter_key=train_filter_by_attribute,
-        )
-        valid_demo_keys = FileUtils.get_demos_for_filter_key(
-            hdf5_path=os.path.expanduser(config.train.data),
-            filter_key=valid_filter_by_attribute,
-        )
-        assert set(train_demo_keys).isdisjoint(set(valid_demo_keys)), "training demonstrations overlap with " \
-            "validation demonstrations!"
-        train_dataset = dataset_factory(config, obs_keys, filter_by_attribute=train_filter_by_attribute)
-        valid_dataset = dataset_factory(config, obs_keys, filter_by_attribute=valid_filter_by_attribute)
-    else:
-        train_dataset = dataset_factory(config, obs_keys, filter_by_attribute=train_filter_by_attribute)
-        valid_dataset = None
-
-    return train_dataset, valid_dataset
-
-
-def dataset_factory(config, obs_keys, filter_by_attribute=None, dataset_path=None):
-    """
-    Create a PlaydataSequenceDataset instance to pass to a torch DataLoader.
-
-    Args:
-        config (BaseConfig instance): config object
-
-        obs_keys (list): list of observation modalities that are required for
-            training (this will inform the dataloader on what modalities to load)
-
-        filter_by_attribute (str): if provided, use the provided filter key
-            to select a subset of demonstration trajectories to load
-
-        dataset_path (str): if provided, the PlaydataSequenceDataset instance should load
-            data from this dataset path. Defaults to config.train.data.
-
-    Returns:
-        dataset (PlaydataSequenceDataset instance): dataset object
-    """
+def encoder_dataset_factory(config, obs_keys, dataset_path=None):
+    
     if dataset_path is None:
         dataset_path = config.train.data
 
@@ -100,8 +49,7 @@ def dataset_factory(config, obs_keys, filter_by_attribute=None, dataset_path=Non
         hdf5_cache_mode=config.train.hdf5_cache_mode,
         hdf5_use_swmr=config.train.hdf5_use_swmr,
         hdf5_normalize_obs=config.train.hdf5_normalize_obs,
-        filter_by_attribute=filter_by_attribute
     )
-    dataset = PlaydataSequenceDataset(**ds_kwargs)
+    dataset = EncoderSequenceDataset(**ds_kwargs)
 
     return dataset

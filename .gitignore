@@ -3,7 +3,7 @@
 *.ipynb 
 *.hdf5
 
-
+outputs/
 
 
 

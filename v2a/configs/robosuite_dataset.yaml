@@ -2,11 +2,11 @@ root_dir: "/code/v2a_mimicplay"
 
 dataset: "${root_dir}/datasets/debug/low_dim_v141.hdf5"
 output_name: "output_dataset.hdf5"
-n: 10 
+n: 3
 shaped: false
 camera_names: ["agentview"] #["agentview", "birdview",'frontview'], 
-camera_height: 84
-camera_width: 84
+camera_height: 224
+camera_width: 224
 done_mode: 0
 copy_rewards: false
 copy_dones: false

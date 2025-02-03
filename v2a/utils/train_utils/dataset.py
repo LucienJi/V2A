@@ -6,7 +6,7 @@ import robomimic.utils.log_utils as LogUtils
 
 from robomimic.utils.dataset import SequenceDataset
 
-class PlaydataSequenceDataset(SequenceDataset):
+class EncoderSequenceDataset(SequenceDataset):
     def __init__(
             self,
             hdf5_path,
@@ -22,57 +22,9 @@ class PlaydataSequenceDataset(SequenceDataset):
             hdf5_cache_mode=None,
             hdf5_use_swmr=True,
             hdf5_normalize_obs=False,
-            filter_by_attribute=None,
             load_next_obs=True,
     ):
-        """
-        Dataset class for fetching sequences of experience.
-        Length of the fetched sequence is equal to (@frame_stack - 1 + @seq_length)
-
-        Args:
-            hdf5_path (str): path to hdf5
-
-            obs_keys (tuple, list): keys to observation items (image, object, etc) to be fetched from the dataset
-
-            dataset_keys (tuple, list): keys to dataset items (actions, rewards, etc) to be fetched from the dataset
-
-            frame_stack (int): numbers of stacked frames to fetch. Defaults to 1 (single frame).
-
-            seq_length (int): length of sequences to sample. Defaults to 1 (single frame).
-
-            pad_frame_stack (int): whether to pad sequence for frame stacking at the beginning of a demo. This
-                ensures that partial frame stacks are observed, such as (s_0, s_0, s_0, s_1). Otherwise, the
-                first frame stacked observation would be (s_0, s_1, s_2, s_3).
-
-            pad_seq_length (int): whether to pad sequence for sequence fetching at the end of a demo. This
-                ensures that partial sequences at the end of a demonstration are observed, such as
-                (s_{T-1}, s_{T}, s_{T}, s_{T}). Otherwise, the last sequence provided would be
-                (s_{T-3}, s_{T-2}, s_{T-1}, s_{T}).
-
-            get_pad_mask (bool): if True, also provide padding masks as part of the batch. This can be
-                useful for masking loss functions on padded parts of the data.
-
-            goal_mode (str): either "last" or None. Defaults to None, which is to not fetch goals
-
-            hdf5_cache_mode (str): one of ["all", "low_dim", or None]. Set to "all" to cache entire hdf5
-                in memory - this is by far the fastest for data loading. Set to "low_dim" to cache all
-                non-image data. Set to None to use no caching - in this case, every batch sample is
-                retrieved via file i/o. You should almost never set this to None, even for large
-                image datasets.
-
-            hdf5_use_swmr (bool): whether to use swmr feature when opening the hdf5 file. This ensures
-                that multiple Dataset instances can all access the same hdf5 file without problems.
-
-            hdf5_normalize_obs (bool): if True, normalize observations by computing the mean observation
-                and std of each observation (in each dimension and modality), and normalizing to unit
-                mean and variance in each dimension.
-
-            filter_by_attribute (str): if provided, use the provided filter key to look up a subset of
-                demonstrations to load
-
-            load_next_obs (bool): whether to load next_obs from the dataset
-        """
-
+        self.filter_by_attribute = None
         self.hdf5_path = os.path.expanduser(hdf5_path)
         self.hdf5_use_swmr = hdf5_use_swmr
         self.hdf5_normalize_obs = hdf5_normalize_obs
@@ -84,12 +36,12 @@ class PlaydataSequenceDataset(SequenceDataset):
         self.hdf5_cache_mode = hdf5_cache_mode
 
         self.load_next_obs = load_next_obs
-        self.filter_by_attribute = filter_by_attribute
 
         # get all keys that needs to be fetched
         self.obs_keys = tuple(obs_keys)
         self.dataset_keys = tuple(dataset_keys)
 
+        # import pdb; pdb.set_trace()
         self.n_frame_stack = frame_stack
         assert self.n_frame_stack >= 1
 
@@ -104,7 +56,7 @@ class PlaydataSequenceDataset(SequenceDataset):
         self.pad_frame_stack = pad_frame_stack
         self.get_pad_mask = get_pad_mask
 
-        self.load_demo_info(filter_by_attribute=self.filter_by_attribute)
+        self.load_demo_info(filter_by_attribute=None)
 
         # maybe prepare for observation normalization
         self.obs_normalization_stats = None

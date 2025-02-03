@@ -36,15 +36,7 @@ def train():
     )
 
     data_loader_iter = iter(train_loader)
-    for _ in range(3):
-        import pdb; pdb.set_trace()
-        try: 
-            batch = next(data_loader_iter)
-        except StopIteration:
-            data_loader_iter = iter(train_loader)
-            batch = next(data_loader_iter)
-        
-        print(batch)
+    
 
 
     

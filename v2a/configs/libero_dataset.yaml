@@ -1,0 +1,15 @@
+root_dir: "/code/v2a_mimicplay"
+
+dataset: "${root_dir}/datasets/debug/pick_up_the_black_bowl_between_the_plate_and_the_ramekin_and_place_it_on_the_plate_demo.hdf5"
+output_name: "output_dataset.hdf5"
+n: null 
+shaped: false
+camera_names: ["agentview"] #["agentview", "birdview",'frontview'], 
+camera_height: 84
+camera_width: 84
+done_mode: 0
+copy_rewards: false
+copy_dones: false
+exclude_next_obs: false
+compress: false
+depths: [false]

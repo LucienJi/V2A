@@ -95,7 +95,10 @@ class EncoderSequenceDataset(SequenceDataset):
             self.hdf5_cache = None
 
         self.close_and_delete_hdf5_handle()
+        self.if_positive_demo = False
 
+    def set_positive_demo(self, if_positive_demo):
+        self.if_positive_demo = if_positive_demo
 
     def get_item(self, index):
         """

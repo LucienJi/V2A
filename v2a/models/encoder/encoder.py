@@ -8,24 +8,11 @@ from collections import OrderedDict
 from robomimic.models.obs_core import VisualCore, Randomizer
 from copy import deepcopy
 from einops import rearrange, repeat, reduce
+from typing import List, Optional, Sequence, Tuple, Union
+from torch import Tensor
+from v2a.models import utils
 
 
-class Prototypes(nn.Module):
-    def __init__(self, embedding_dim, num_prototypes):
-        """
-        A linear layer that maps an embedding to the space of prototypes.
-        
-        Args:
-            embedding_dim (int): Dimension of the video embedding.
-            num_prototypes (int): Number of prototypes (clusters).
-        """
-        super().__init__()
-        self.prototypes = nn.Linear(embedding_dim, num_prototypes, bias=False)
-    
-    def forward(self, x):
-        # x: (batch, embedding_dim)
-        # Returns: (batch, num_prototypes)
-        return self.prototypes(x)
 
 class VisualMotionEncoder_v1(nn.Module):
     def __init__(self,
@@ -51,6 +38,11 @@ class VisualMotionEncoder_v1(nn.Module):
         self.img_encoder = img_encoder
         self.state_encoder = state_encoder 
         self.video_encoder = video_encoder 
+        self.num_prototypes = num_prototypes
+        if self.num_prototypes > 0:
+            self.prototypes = SwaVPrototypes(input_dim=video_encoder.rep_dim, n_prototypes=num_prototypes)
+        else:
+            self.prototypes = None
     
     def forward(self,image, state):
         """
@@ -90,4 +82,85 @@ class VisualMotionEncoder_v1(nn.Module):
         state_encoding = self.state_encoder(state)
         return state_encoding
     
-        
+
+class SwaVPrototypes(nn.Module):
+    """Multihead Prototypes used for SwaV.
+
+    Each output feature is assigned to a prototype, SwaV solves the swapped
+    prediction problem where the features of one augmentation are used to
+    predict the assigned prototypes of the other augmentation.
+
+    Attributes:
+        input_dim:
+            The input dimension of the head.
+        n_prototypes:
+            Number of prototypes.
+        n_steps_frozen_prototypes:
+            Number of steps during which we keep the prototypes fixed.
+
+    Examples:
+        >>> # use features with 128 dimensions and 512 prototypes
+        >>> prototypes = SwaVPrototypes(128, 512)
+        >>>
+        >>> # pass batch through backbone and projection head.
+        >>> features = model(x)
+        >>> features = nn.functional.normalize(features, dim=1, p=2)
+        >>>
+        >>> # logits has shape bsz x 512
+        >>> logits = prototypes(features)
+    """
+
+    def __init__(
+        self,
+        input_dim: int = 128,
+        n_prototypes: Union[List[int], int] = 512,
+        n_steps_frozen_prototypes: int = 0,
+    ):
+        """Intializes the SwaVPrototypes module with the specified parameters"""
+        super(SwaVPrototypes, self).__init__()
+
+        # Default to a list of 1 if n_prototypes is an int.
+        self.n_prototypes = (
+            n_prototypes if isinstance(n_prototypes, list) else [n_prototypes]
+        )
+        self._is_single_prototype = True if isinstance(n_prototypes, int) else False
+        self.heads = nn.ModuleList(
+            [nn.Linear(input_dim, prototypes) for prototypes in self.n_prototypes]
+        )
+        self.n_steps_frozen_prototypes = n_steps_frozen_prototypes
+
+    def forward(
+        self, x: Tensor, step: Optional[int] = None
+    ) -> Union[Tensor, List[Tensor]]:
+        """Forward pass of the SwaVPrototypes module.
+
+        Args:
+            x:
+                Input tensor.
+            step:
+                Current training step.
+
+        Returns:
+            The logits after passing through the prototype heads. Returns a single tensor
+            if there's one prototype head, otherwise returns a list of tensors.
+        """
+        self._freeze_prototypes_if_required(step)
+        out = []
+        for layer in self.heads:
+            out.append(layer(x))
+        return out[0] if self._is_single_prototype else out
+
+    def normalize(self) -> None:
+        """Normalizes the prototypes so that they are on the unit sphere."""
+        for layer in self.heads:
+            utils.normalize_weight(layer.weight)
+
+    def _freeze_prototypes_if_required(self, step: Optional[int] = None) -> None:
+        """Freezes the prototypes if the specified number of steps has been reached."""
+        if self.n_steps_frozen_prototypes > 0:
+            if step is None:
+                raise ValueError(
+                    "`n_steps_frozen_prototypes` is greater than 0, please"
+                    " provide the `step` argument to the `forward()` method."
+                )
+            self.requires_grad_(step >= self.n_steps_frozen_prototypes)

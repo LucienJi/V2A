@@ -11,40 +11,45 @@ from robomimic.utils.log_utils import PrintLogger, DataLogger
 from v2a.configs import V2AConfig
 from v2a.utils.train_utils.dataloader import load_data_for_encoder_training
 from torch.utils.data import DataLoader
+from v2a.algo.algo_encoder import EncoderAlgo
 
-CONFIG_PATH = "/code/v2a_mimicplay/v2a/configs/debug.json"
+CONFIG_PATH = "/code/V2A/v2a/configs/train_encoder.json"
 def train():
     ext_cfg = json.load(open(CONFIG_PATH, 'r'))
     config = V2AConfig(dict_to_load=ext_cfg)
-    ObsUtils.initialize_obs_utils_with_config(config)
+    # ObsUtils.initialize_obs_utils_with_config(config)
+    ObsUtils.initialize_obs_utils_with_obs_specs([config.observation.modalities])
 
     shape_meta = FileUtils.get_shape_metadata_from_dataset(
         dataset_path=config.train.data,
         all_obs_keys=config.all_obs_keys,
         verbose=True
     )
-    trainset = load_data_for_encoder_training(
-        config, obs_keys=shape_meta["all_obs_keys"])
-    train_sampler = trainset.get_dataset_sampler()
-    train_loader = DataLoader(
-        dataset=trainset,
-        sampler=train_sampler,
-        batch_size=config.train.batch_size,
-        shuffle=(train_sampler is None),
-        num_workers=config.train.num_data_workers,
-        drop_last=True
+    print(shape_meta['all_shapes'])
+    all_shapes = shape_meta['all_shapes']
+    algo = EncoderAlgo(
+        algo_config=config.algo,
+        obs_config=config.observation,
+        global_config=config,
+        obs_key_shapes=shape_meta['all_shapes'],
+        ac_dim=0,
+        device='cuda'
     )
 
-    data_loader_iter = iter(train_loader)
-    for _ in range(3):
-        import pdb; pdb.set_trace()
-        try: 
-            batch = next(data_loader_iter)
-        except StopIteration:
-            data_loader_iter = iter(train_loader)
-            batch = next(data_loader_iter)
-        
-        print(batch)
+    # trainset = load_data_for_encoder_training(
+    #     config, obs_keys=shape_meta["all_obs_keys"])
+    # train_sampler = trainset.get_dataset_sampler()
+    # train_loader = DataLoader(
+    #     dataset=trainset,
+    #     sampler=train_sampler,
+    #     batch_size=config.train.batch_size,
+    #     shuffle=(train_sampler is None),
+    #     num_workers=config.train.num_data_workers,
+    #     drop_last=True
+    # )
+
+    # data_loader_iter = iter(train_loader)
+    
 
 
     

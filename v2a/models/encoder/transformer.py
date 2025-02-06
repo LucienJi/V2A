@@ -14,6 +14,10 @@ class TransformerEncoder(nn.Module):
                  pos_encoder=None,
                  use_cls_token = True) -> None:
         super().__init__()
+        self.input_dim = input_dim
+        self.query_dim = query_dim
+        self.rep_dim = rep_dim
+        self.n_heads = heads
 
         self.encoder = nn.Linear(input_dim, query_dim)
 

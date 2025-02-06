@@ -26,7 +26,7 @@
         ],
         "goal_mode": null,
         "cuda": true,
-        "batch_size": 2,
+        "batch_size": 32,
         "num_epochs": 3000,
         "seed": 1
     },
@@ -35,7 +35,36 @@
             "embedding_dim": 128,
             "heads": 4,
             "n_layer": 2,
-            "num_prototypes": 128
+            "num_prototypes": 128,
+            "tcl":
+            {
+                "positive_window": 4,
+                "negative_window": 12,
+                "num_negatives": 16,
+                "tcl_coef": 0.1
+            },
+            "cluster":
+            {
+                "cluster_coef": 0.1
+            },
+            "obs_augmentation": {
+              "crop": {
+                  "type": "RandomResizedCrop", 
+                  "size": 224
+                },
+              "color_jitter": 
+                {"brightness": 0.8, 
+                "contrast": 0.8, 
+                "saturation": 0.8, 
+                "hue": 0.2, 
+                "p": 0.8},
+              "grayscale": 
+                {"p": 0.2},
+              "gaussian_blue": {
+                  "kernel_size": 23, 
+                  "p": 0.5}
+          }
+
         }
     },
 

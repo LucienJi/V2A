@@ -250,7 +250,7 @@ if __name__ == '__main__':
         skill_input_dim=0,
         skill_output_dim=128,
         combined_hidden_dims=[256, 256],
-        action_dim=4,
+        action_dim=6,
         num_modes=5,
         min_std=0.01,
         std_activation="softplus",

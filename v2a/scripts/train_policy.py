@@ -6,7 +6,7 @@ import h5py
 import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
-from robomimic.config import config_factory
+from robomimic.config import config_factory, get_all_registered_configs
 from v2a.algo.algo_policy_ds import GMMPolicyAlgo
 from v2a.configs import V2AConfig
 
@@ -16,10 +16,12 @@ class HDF5Dataset(Dataset):
         self.obs_keys = obs_keys
         self.action_key = action_key
         self.demo_keys = []
+        self.max_length = 150
         
         with h5py.File(hdf5_path, "r") as f:
             for demo in f["data"]:
                 self.demo_keys.append(f"data/{demo}")
+            print("In HDF5Dataset.__init__, self.demo_keys: ", self.demo_keys)
 
     def __len__(self):
         return len(self.demo_keys)
@@ -30,14 +32,38 @@ class HDF5Dataset(Dataset):
             
             obs = {}
             # Load image observations
-            obs["eye_in_hand_rgb"] = np.array(demo["obs/eye_in_hand_rgb"], dtype=np.float32) / 255.0
-            obs["eye_in_hand_rgb"] = np.transpose(obs["eye_in_hand_rgb"], (0, 3, 1, 2))  # NHWC -> NCHW
+            obs["image"] = np.array(demo["obs/eye_in_hand_rgb"], dtype=np.float32) / 255.0
+            obs["image"] = np.transpose(obs["image"], (0, 3, 1, 2))  # NHWC -> NCHW
             
             # Load robot states
-            obs["robot_states"] = np.array(demo["obs/robot_states"], dtype=np.float32)
+            obs["robot_state"] = np.array(demo["robot_states"], dtype=np.float32)
             
             # Load actions
             actions = np.array(demo["actions"], dtype=np.float32)
+            
+
+            
+                # 统一时间步长
+        def pad_or_truncate(arr, target_length):
+            """对输入的时间序列数据进行填充或截断，使其长度固定"""
+            length = arr.shape[0]
+            if length > target_length:
+                return arr[:target_length]  # 截断
+            elif length < target_length:
+                pad_shape = (target_length - length, *arr.shape[1:])
+                pad = np.zeros(pad_shape, dtype=arr.dtype)
+                return np.concatenate([arr, pad], axis=0)  # 填充
+            else:
+                return arr  # 长度相同
+            
+                # 处理不同长度的时间步
+        obs["image"] = pad_or_truncate(obs["image"], self.max_length)
+        obs["robot_state"] = pad_or_truncate(obs["robot_state"], self.max_length)
+        actions = pad_or_truncate(actions, self.max_length)
+            
+        assert obs["image"].shape[0] == obs["robot_state"].shape[0] == actions.shape[0], \
+            f"Shape mismatch: {obs['image'].shape[0]}, {obs['robot_state'].shape[0]}, {actions.shape[0]}"
+        # import pdb; pdb.set_trace()
             
         return {
             "obs": obs,
@@ -57,11 +83,13 @@ def train(config, hdf5_path, output_dir):
         dataset,
         batch_size=config.train.batch_size,
         shuffle=True,
-        num_workers=4
+        num_workers=0
     )
     
     # Create algo
-    algo_config = config_factory("hbc")  # Using HBC as base config
+    print(get_all_registered_configs())
+    algo_config = config_factory("bc")  # Using HBC as base config
+    # import pdb; pdb.set_trace()
     algo = GMMPolicyAlgo(
         algo_config=algo_config.algo,
         obs_config=algo_config.observation,

@@ -47,3 +47,28 @@ class MLP(nn.Module):
     def forward(self, images):
         features = self.mlp(images)
         return self.linear(features)
+    
+class StateProjector(nn.Module):
+    def __init__(self, input_dim,n_seq, out_size,) -> None:
+        """
+        Args:
+            input_dim (int): the input dimension of the input features.
+            out_size (int): the output size of the final linear layer.
+        """
+        super().__init__()
+        self.n_seq = n_seq
+        input_dim = input_dim * n_seq
+        self.input_dim = input_dim
+        self.mlp = nn.Sequential(
+            nn.Linear(input_dim, 256),
+            nn.Tanh(),
+            nn.Linear(256, 256),
+            nn.Tanh(),
+        )
+        self.linear = nn.Linear(256, out_size)
+    def forward(self, state):
+
+        batch_size, seq_len, _ = state.shape
+        state = state.reshape(batch_size, self.input_dim)
+        features = self.mlp(state)
+        return self.linear(features)

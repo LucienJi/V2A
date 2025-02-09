@@ -49,10 +49,11 @@ class TransformerEncoder(nn.Module):
     def forward(self, x):
         batch, _, f = x.shape
         x = self.encoder(x)
+
         
         if self.use_cls_token:
             cls_token = self.representation_token.expand(batch,-1, -1)
-            x = torch.cat([cls_token, x], dim = -1) ## add a representation token at sequence start
+            x = torch.cat([cls_token, x], dim = 1) ## add a representation token at sequence start
         
         
         x = x * math.sqrt(self.d_model)

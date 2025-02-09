@@ -19,6 +19,7 @@
         "hdf5_validation_filter_key": null,
         "seq_length": 5,
         "frame_stack": 1,
+        "pad_frame_stack":true,
         "dataset_keys": [
             "actions",
             "rewards",
@@ -32,6 +33,7 @@
     },
     "algo":{
         "encoder": {
+            "n_seq": 5,
             "embedding_dim": 128,
             "heads": 4,
             "n_layer": 2,
@@ -47,22 +49,31 @@
             {
                 "cluster_coef": 0.1
             },
+            "mcr":
+            {
+                "mcr_coef": 0.1
+            },
             "obs_augmentation": {
               "crop": {
                   "type": "RandomResizedCrop", 
                   "size": 224
                 },
               "color_jitter": 
-                {"brightness": 0.8, 
-                "contrast": 0.8, 
-                "saturation": 0.8, 
-                "hue": 0.2, 
-                "p": 0.8},
+                {
+                  "brightness": 0.8, 
+                  "contrast": 0.8, 
+                  "saturation": 0.8, 
+                  "hue": 0.2, 
+                  "p": 0.8
+              },
               "grayscale": 
-                {"p": 0.2},
+                {
+                  "p": 0.2
+                },
               "gaussian_blue": {
                   "kernel_size": 23, 
-                  "p": 0.5}
+                  "p": 0.5
+                }
           }
 
         }

@@ -1,21 +1,13 @@
 import torchvision.transforms as transforms
-from PIL import Image, ImageFilter
 import random
 import torch
 
-# 自定义高斯模糊（如果需要）
-class GaussianBlur(object):
-    def __init__(self, kernel_size, min_sigma=0.1, max_sigma=2.0):
-        self.kernel_size = kernel_size
-        self.min_sigma = min_sigma
-        self.max_sigma = max_sigma
-
-    def __call__(self, img):
-        sigma = random.uniform(self.min_sigma, self.max_sigma)
-        return img.filter(ImageFilter.GaussianBlur(radius=sigma))
 
 def build_transform(config):
     """
+    根据配置文件构建 transform 流水线
+    config 为一个字典，包含你需要的增强及参数
+    例如:
         config = {
             'crop': {'type': 'RandomResizedCrop', 'size': 224},
             'flip': {'type': 'RandomHorizontalFlip', 'p': 0.5},
@@ -26,7 +18,7 @@ def build_transform(config):
     """
     transform_list = []
     
-    # Crop
+    # # Crop
     if 'crop' in config:
         crop_config = config['crop']
         crop_type = crop_config.get('type', 'RandomResizedCrop')
@@ -67,12 +59,9 @@ def build_transform(config):
         gb_config = config['gaussian_blur']
         kernel_size = gb_config.get('kernel_size', 23)
         p = gb_config.get('p', 0.5)
-        # 这里先构造高斯模糊 transform
-        gaussian_blur = GaussianBlur(kernel_size=kernel_size)
+        gaussian_blur = transforms.GaussianBlur(kernel_size=kernel_size)
         transform_list.append(transforms.RandomApply([gaussian_blur], p=p))
 
-    # 转为 tensor
-    transform_list.append(transforms.ToTensor())
 
     # Normalize (如果需要)
     if 'normalize' in config:

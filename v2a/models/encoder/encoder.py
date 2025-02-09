@@ -54,7 +54,9 @@ class VisualMotionEncoder_v1(nn.Module):
         """
         img_encoding = self.img_representation(image)
         state_encoding = self.state_representation(state)
-        x = torch.cat([img_encoding, state_encoding], dim=-1)
+        ## Shape problem, concatenate or add 
+        # x = torch.cat([img_encoding, state_encoding], dim=-1)
+        x = img_encoding + state_encoding
         x = self.video_encoder(x)
         return x
     
@@ -68,8 +70,8 @@ class VisualMotionEncoder_v1(nn.Module):
         """
         batch, seq_len, C, H, W = image.shape
         image = rearrange(image, 'b t c h w  -> (b t) c h w')
-        image_encoding = self.img_encoder(image)
-        image_encoding = rearrange(image_encoding, '(b t) c h w -> b t c h w', b=batch)
+        image_encoding = self.img_encoder(image) ## (batch*seq_len, embedding_dim)
+        image_encoding = rearrange(image_encoding, '(b t) c -> b t c', b=batch, t=seq_len)
         return image_encoding
 
     def state_representation(self,state):

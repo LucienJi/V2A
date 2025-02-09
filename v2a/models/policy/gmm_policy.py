@@ -72,13 +72,13 @@ class GMMActorNetwork(nn.Module):
     def __init__(
         self,
         image_output_dim=256,      # Dimension of image features after projection.
-        state_input_dim=18,        # Dimension of the raw robot state vector.
+        state_input_dim=9,        # Dimension of the raw robot state vector.
         state_hidden_dims=[256, 256],# Hidden sizes for state MLP.
         state_output_dim=64,       # Output dimension for state features.
         skill_input_dim = 0,
         skill_output_dim = 128,
         combined_hidden_dims=[256, 256], # Hidden sizes for the combined MLP.
-        action_dim=6,              # Dimension of the action vector.
+        action_dim=7,              # Dimension of the action vector.
         num_modes=5,               # Number of GMM modes.
         min_std=0.0001,              # Minimum standard deviation.
         std_activation="softplus", # Activation function for std (can be "softplus" or "exp").
@@ -196,10 +196,19 @@ class GMMActorNetwork(nn.Module):
             # We define a simple Tanh wrapper below.
             gmm = TanhWrappedDistribution(gmm)
 
-        # For training we often need to return the distribution (to compute log-likelihood)
-        # Here we sample an action.
-        action = gmm.sample()  # (B, action_dim)
-        return action
+        # # For training we often need to return the distribution (to compute log-likelihood)
+        # # Here we sample an action.
+        # action = gmm.sample()  # (B, action_dim)
+        # return action
+        
+        # return distribution
+        return gmm
+    
+    def sample_action(self, obs, skill=None):
+        """model forward to get distribution, then sample to get action."""
+        with torch.no_grad():
+            dist = self.forward(obs, skill)
+            return dist.sample()
 
 ##############################################
 # Tanh Wrapped Distribution (optional)
@@ -250,7 +259,7 @@ if __name__ == '__main__':
         skill_input_dim=0,
         skill_output_dim=128,
         combined_hidden_dims=[256, 256],
-        action_dim=4,
+        action_dim=6,
         num_modes=5,
         min_std=0.01,
         std_activation="softplus",

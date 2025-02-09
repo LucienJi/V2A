@@ -16,22 +16,6 @@ def sinkhorn(
 ) -> Tensor:
     """Distributed sinkhorn algorithm.
 
-    As outlined in [0] and implemented in [1].
-
-    - [0]: SwaV, 2020, https://arxiv.org/abs/2006.09882
-    - [1]: https://github.com/facebookresearch/swav/
-
-    Args:
-        out:
-            Similarity of the features and the SwaV prototypes.
-        iterations:
-            Number of sinkhorn iterations.
-        epsilon:
-            Temperature parameter.
-        gather_distributed:
-            If True then features from all gpus are gathered to calculate the
-            soft codes Q.
-
     Returns:
         Soft codes Q assigning each feature to a prototype.
     """
@@ -132,62 +116,38 @@ class SwaVLoss(nn.Module):
 
     def forward(
         self,
-        high_resolution_outputs: List[Tensor],
-        low_resolution_outputs: List[Tensor],
+        features1: List[Tensor],
+        features2: List[Tensor],
         queue_outputs: Union[List[Tensor], None] = None,
     ) -> Tensor:
-        """Computes the SwaV loss for a set of high and low resolution outputs.
-
-        - [0]: SwaV, 2020, https://arxiv.org/abs/2006.09882
-
-        Args:
-            high_resolution_outputs:
-                List of similarities of features and SwaV prototypes for the
-                high resolution crops.
-            low_resolution_outputs:
-                List of similarities of features and SwaV prototypes for the
-                low resolution crops.
-            queue_outputs:
-                List of similarities of features and SwaV prototypes for the
-                queue of high resolution crops from previous batches.
-
-        Returns:
-            Swapping assignments between views loss (SwaV) as described in [0].
-        """
-        n_crops = len(high_resolution_outputs) + len(low_resolution_outputs)
-
-        # Multi-crop iterations
-        loss = torch.tensor(0.0)
-        for i in range(len(high_resolution_outputs)):
-            # Compute codes of i-th high resolution crop
-            with torch.no_grad():
-                outputs = high_resolution_outputs[i].detach()
-
-                # Append queue outputs
-                if queue_outputs is not None:
-                    outputs = torch.cat((outputs, queue_outputs[i].detach()))
-
+        n_features = len(features1)
+        with torch.no_grad():
+            # Append queue outputs
+            if queue_outputs is not None:
+                features1 = torch.cat((features1, queue_outputs.detach())) # (B+N, C)
+                features2 = torch.cat((features2, queue_outputs.detach()))
                 # Compute the codes
-                q = sinkhorn(
-                    outputs,
+            q1 = sinkhorn(
+                    features1,
+                    iterations=self.sinkhorn_iterations,
+                    epsilon=self.sinkhorn_epsilon,
+                    gather_distributed=self.sinkhorn_gather_distributed,
+                )
+            q2 = sinkhorn(
+                    features2,
                     iterations=self.sinkhorn_iterations,
                     epsilon=self.sinkhorn_epsilon,
                     gather_distributed=self.sinkhorn_gather_distributed,
                 )
 
-                # Drop queue similarities
-                if queue_outputs is not None:
-                    q = q[: len(high_resolution_outputs[i])]
+            # Drop queue similarities
+            if queue_outputs is not None:
+                q1 = q1[: n_features]
+                q2 = q2[: n_features]
+            print(q1.shape, q2.shape)
+        # Compute subloss for each pair of crops
+        loss1 = self.subloss(z = features1, q = q2)
+        loss2 = self.subloss(z = features2, q = q1)
+        loss = loss1 + loss2        
 
-            # Compute subloss for each pair of crops
-            subloss = torch.tensor(0.0)
-            for v in range(len(high_resolution_outputs)):
-                if v != i:
-                    subloss += self.subloss(high_resolution_outputs[v], q)
-
-            for v in range(len(low_resolution_outputs)):
-                subloss += self.subloss(low_resolution_outputs[v], q)
-
-            loss += subloss / (n_crops - 1)
-
-        return loss / len(high_resolution_outputs)
+        return loss / 2.0

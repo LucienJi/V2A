@@ -95,10 +95,6 @@ class EncoderSequenceDataset(SequenceDataset):
             self.hdf5_cache = None
 
         self.close_and_delete_hdf5_handle()
-        self.if_positive_demo = False
-
-    def set_positive_demo(self, if_positive_demo):
-        self.if_positive_demo = if_positive_demo
 
     def get_item(self, index):
         """
@@ -160,3 +156,45 @@ class EncoderSequenceDataset(SequenceDataset):
             )
 
         return meta
+
+    
+    def get_batch_within_trajectory(self, index,bz):
+        n_demo = len(self.demos)
+        index = index % n_demo
+        demo_id = self._index_to_demo_id[index]
+        demo_length = self._demo_id_to_demo_length[demo_id]
+
+        ideal_length = bz * self.seq_length 
+
+        if ideal_length > demo_length:
+            bz = demo_length // self.seq_length
+        ideal_length = bz * self.seq_length
+        start_index = random.randint(0, demo_length - ideal_length)
+        
+        meta = {}
+        obs_sequence = self.get_obs_sequence_from_demo(
+            demo_id=demo_id,
+            index_in_demo=start_index,
+            keys=self.obs_keys,
+            num_frames_to_stack=self.n_frame_stack - 1,
+            seq_length=ideal_length,
+            prefix="obs",
+        )
+        for k,v in obs_sequence.items():
+            obs_sequence[k] = v.reshape(bz, self.seq_length, *v.shape[1:])
+        meta['obs'] = obs_sequence
+
+        robot_states = self.get_dataset_sequence_from_demo(
+            demo_id=demo_id,
+            index_in_demo=start_index,
+            keys=self.dataset_keys,
+            num_frames_to_stack=self.n_frame_stack - 1,
+            seq_length=ideal_length
+        )
+        for k,v in robot_states.items():
+            meta[k] = v.reshape(bz, self.seq_length, *v.shape[1:])
+        return meta
+
+
+
+

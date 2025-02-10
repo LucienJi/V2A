@@ -195,6 +195,100 @@ class EncoderSequenceDataset(SequenceDataset):
             meta[k] = v.reshape(bz, self.seq_length, *v.shape[1:])
         return meta
 
+class PolicyDataset(EncoderSequenceDataset):
+    def __init__(
+            self,
+            hdf5_path,
+            obs_keys,
+            dataset_keys,
+            goal_obs_gap,
+            frame_stack=1,
+            seq_length=1,
+            pad_frame_stack=True,
+            pad_seq_length=True,
+            get_pad_mask=False,
+            goal_mode=None,
+            hdf5_cache_mode=None,
+            hdf5_use_swmr=True,
+            hdf5_normalize_obs=False,
+            load_next_obs=True,
+            with_encoder=False
+    ):
+        super().__init__(
+                hdf5_path=hdf5_path,
+                obs_keys=obs_keys,
+                dataset_keys=dataset_keys,
+                goal_obs_gap=goal_obs_gap,
+                frame_stack=frame_stack,
+                seq_length=seq_length,
+                pad_frame_stack=pad_frame_stack,
+                pad_seq_length=pad_seq_length,
+                get_pad_mask=get_pad_mask,
+                goal_mode=goal_mode,
+                hdf5_cache_mode=hdf5_cache_mode,
+                hdf5_use_swmr=hdf5_use_swmr,
+                hdf5_normalize_obs=hdf5_normalize_obs
+        )
+        self.with_encoder = with_encoder    
+    
+    def get_item(self, index):
+        policy_seq_length = 1 
+        policy_n_frame_stack = 1
 
+        demo_id = self._index_to_demo_id[index]
+        demo_start_index = self._demo_id_to_start_indices[demo_id]
+        demo_length = self._demo_id_to_demo_length[demo_id]
+
+        # start at offset index if not padding for frame stacking
+        demo_index_offset = 0 
+        index_in_demo = index - demo_start_index + demo_index_offset
+
+        # end at offset index if not padding for seq length
+        demo_length_offset = 0 if self.pad_seq_length else (self.seq_length - 1)
+        end_index_in_demo = demo_length - demo_length_offset
+        
+        policy_meta = self.get_dataset_sequence_from_demo(
+            demo_id,
+            index_in_demo=index_in_demo,
+            keys=self.dataset_keys,
+            num_frames_to_stack=policy_n_frame_stack - 1, # note: need to decrement self.n_frame_stack by one
+            seq_length=policy_seq_length
+        )
+        policy_meta['obs'] = self.get_obs_sequence_from_demo(
+            demo_id,
+            index_in_demo=index_in_demo,
+            keys=self.obs_keys,
+            num_frames_to_stack=policy_n_frame_stack - 1,
+            seq_length=policy_seq_length,
+            prefix="obs"
+        )
+
+        if self.with_encoder:
+            encoder_meta = self.get_dataset_sequence_from_demo(
+                demo_id,
+                index_in_demo=index_in_demo,
+                keys=self.dataset_keys,
+                num_frames_to_stack=self.n_frame_stack - 1, # note: need to decrement self.n_frame_stack by one
+                seq_length=self.seq_length
+            )
+            encoder_meta['obs'] = self.get_obs_sequence_from_demo(
+                demo_id,
+                index_in_demo=index_in_demo,
+                keys=self.obs_keys,
+                num_frames_to_stack=self.n_frame_stack - 1,
+                seq_length=self.seq_length,
+                prefix="obs"
+            )  
+            policy_meta['encoder'] = encoder_meta
+        return policy_meta
+
+
+
+        
+
+        
+
+
+        
 
 

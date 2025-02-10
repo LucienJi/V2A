@@ -7,7 +7,7 @@ import numpy as np
 import torch
 from torch.utils.data import Dataset, DataLoader
 from robomimic.config import config_factory, get_all_registered_configs
-from v2a.algo.algo_policy_ds import GMMPolicyAlgo
+from v2a.algo.algo_policy import GMMPolicyAlgo
 from v2a.configs import V2AConfig
 
 class HDF5Dataset(Dataset):

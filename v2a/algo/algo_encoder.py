@@ -101,8 +101,6 @@ class EncoderAlgo(Algo):
             robot_view.append(batch['obs'][name].permute(0, 1, 4, 2, 3))
         robot_view = torch.cat(robot_view, dim=2)
 
-        robot_state = robot_state.to(self.device)
-        robot_view = robot_view.to(self.device) 
 
         batch['obs'] = robot_view
         batch['robot_state'] = robot_state

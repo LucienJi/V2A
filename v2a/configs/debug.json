@@ -26,12 +26,27 @@
             "dones"
         ],
         "goal_mode": null,
+        "obs_augmentation": true,
         "cuda": true,
+        "device": "cuda:0",
         "batch_size": 32,
-        "num_epochs": 3000,
+        "num_epochs": 3,
+        "save_interval": 10,
         "seed": 1
     },
     "algo":{
+        "optim_params": {
+          "policy": {
+                "learning_rate": {
+                    "initial": 0.0001,
+                    "decay_factor": 0.1,
+                    "epoch_schedule": []
+                },
+                "regularization": {
+                    "L2": 0.0
+                }
+            }
+        },
         "encoder": {
             "n_seq": 5,
             "embedding_dim": 128,
@@ -76,6 +91,19 @@
                 }
           }
 
+        },
+        "policy":
+        {
+            "action_dim": 7,
+            "hidden_dim": [256, 256],
+            "image_output_dim": 128,
+            "embedding_dim": 128,
+            "skill_input_dim": 0,
+            "num_modes": 5,
+            "min_std": 0.0001,
+            "std_activation": "softplus",
+            "use_tanh": false,
+            "low_noise_eval": true
         }
     },
 
@@ -107,6 +135,15 @@
                 "robot0_eef_quat"
             ],
             "rgb":[
+                "agentview_image"
+            ]
+        },
+      "policy": {
+            "robot_state": [
+                "robot0_eef_pos",
+                "robot0_eef_quat"
+            ],
+            "rgb": [
                 "agentview_image"
             ]
         }

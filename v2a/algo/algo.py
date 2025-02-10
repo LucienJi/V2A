@@ -291,3 +291,20 @@ class Algo(object):
         Reset algo state to prepare for environment rollouts.
         """
         pass
+
+class PolicyAlgo(Algo):
+    """
+    Base class for all algorithms that can be used as policies.
+    """
+    def get_action(self, obs_dict, goal_dict=None):
+        """
+        Get policy action outputs.
+
+        Args:
+            obs_dict (dict): current observation
+            goal_dict (dict): (optional) goal
+
+        Returns:
+            action (torch.Tensor): action tensor
+        """
+        raise NotImplementedError
